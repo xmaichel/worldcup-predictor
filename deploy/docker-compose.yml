@@ -1,0 +1,35 @@
+# WCup Predictor — Docker Compose
+# Two services: nginx (frontend) + server.py (API persistence)
+# Access the app at http://<host>:8081
+
+services:
+  frontend:
+    image: nginx:alpine
+    container_name: wcup-predictor
+    ports:
+      - "8081:80"
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+    restart: unless-stopped
+    networks:
+      - wcup-net
+
+  server:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.server
+    container_name: wcup-predictor-server
+    ports:
+      - "8082:8082"
+    volumes:
+      - ./data:/opt/wcup-predictor/data
+    environment:
+      WCUP_DATA_FILE: /opt/wcup-predictor/data/predictions.json
+      WCUP_PORT: "8082"
+    restart: unless-stopped
+    networks:
+      - wcup-net
+
+networks:
+  wcup-net:
+    driver: bridge

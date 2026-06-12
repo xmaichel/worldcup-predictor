@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏆 Mundial 2026 — Pronosticador</title>
+<style>
+  :root {
+    --bg: #0f172a; --card: #1e293b; --border: #334155;
+    --text: #f1f5f9; --muted: #94a3b8; --accent: #3b82f6;
+    --green: #22c55e; --red: #ef4444; --amber: #f59e0b;
+    --input-bg: #0f172a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .container { max-width: 1000px; margin: 0 auto; padding: 16px; }
+  
+  /* Header */
+  header { 
+    background: linear-gradient(135deg, #1e3a5f, #0f172a); 
+    padding: 24px 16px; text-align: center; 
+    border-bottom: 2px solid var(--accent); margin-bottom: 24px;
+  }
+  h1 { font-size: 1.8rem; }
+  h1 small { display: block; font-size: 0.75rem; color: var(--muted); margin-top: 4px; font-weight: normal; }
+  
+  /* Tabs */
+  .tab-bar { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px; }
+  .tab-btn {
+    padding: 6px 14px; border: 1px solid var(--border); background: var(--card);
+    color: var(--muted); border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+    transition: all 0.15s;
+  }
+  .tab-btn:hover { background: #334155; }
+  .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  
+  /* Stats bar */
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px; margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--card); padding: 10px; border-radius: 8px; text-align: center;
+    border: 1px solid var(--border);
+  }
+  .stat-card .num { font-size: 1.6rem; font-weight: 700; }
+  .stat-card .lbl { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-card.predicted { border-color: var(--accent); }
+  .stat-card.correct { border-color: var(--green); }
+  .stat-card.wrong { border-color: var(--red); }
+  
+  /* Match cards */
+  .match-list { display: flex; flex-direction: column; gap: 8px; }
+  .stage-header {
+    background: var(--card); padding: 10px 14px; border-radius: 8px;
+    font-weight: 600; font-size: 0.95rem; border-left: 3px solid var(--accent);
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer;
+  }
+  .stage-header .toggle { color: var(--muted); font-size: 0.8rem; }
+  
+  .match-card {
+    background: var(--card); border-radius: 8px; padding: 10px 14px;
+    border: 1px solid var(--border); display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 4px 8px; align-items: center;
+    transition: border-color 0.2s;
+  }
+  .match-card.has-prediction { border-color: var(--accent); }
+  .match-card.correct-winner { border-color: var(--green); }
+  .match-card.wrong-winner { border-color: var(--red); }
+  
+  .match-info { grid-column: 1 / -1; font-size: 0.7rem; color: var(--muted); display: flex; gap: 12px; }
+  .match-team { font-weight: 600; font-size: 0.9rem; }
+  .match-team.home { text-align: right; }
+  .match-vs { color: var(--muted); font-size: 0.8rem; text-align: center; }
+  
+  .score-inputs { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  .score-inputs label { font-size: 0.75rem; color: var(--muted); }
+  .score-inputs input[type=number] {
+    width: 44px; padding: 4px; text-align: center; font-size: 0.95rem;
+    background: var(--input-bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 4px;
+  }
+  .score-inputs input[type=number]:focus { outline: none; border-color: var(--accent); }
+  .score-inputs .actual-mark { font-size: 0.8rem; }
+  .score-inputs .actual-mark.correct { color: var(--green); }
+  .score-inputs .actual-mark.wrong { color: var(--red); }
+  
+  .model-pred {
+    grid-column: 1 / -1; font-size: 0.7rem; color: var(--muted);
+    text-align: center; padding: 2px 0;
+    background: rgba(59,130,246,0.08); border-radius: 4px;
+  }
+  
+  .knockout-team { border: 1px dashed var(--border); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; color: var(--muted); }
+  .team-prob { display: inline-block; background: rgba(245,158,11,0.15); color: var(--amber); font-size: 0.65rem; padding: 1px 5px; border-radius: 8px; margin-left: 3px; font-weight: 600; vertical-align: middle; }
+  
+  /* Buttons */
+  .btn {
+    padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer;
+    font-size: 0.85rem; font-weight: 500; transition: 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { background: var(--card); }
+  
+  .actions { display: flex; gap: 8px; justify-content: center; margin: 16px 0; flex-wrap: wrap; }
+  
+  /* Responsive */
+  @media (min-width: 640px) {
+    .match-card {
+      grid-template-columns: 1fr auto 1fr;
+      grid-template-rows: auto auto;
+    }
+    .match-info { grid-column: 1 / -1; }
+    .score-inputs { grid-column: 1 / -1; }
+    .model-pred { grid-column: 1 / -1; }
+  }
+  
+  /* Notifications */
+  .toast {
+    position: fixed; bottom: 20px; right: 20px; background: var(--card);
+    border: 1px solid var(--border); padding: 12px 20px; border-radius: 8px;
+    font-size: 0.85rem; z-index: 999; animation: slideIn 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  @keyframes slideIn { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 998;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal { background: var(--card); border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; }
+  .modal h3 { margin-bottom: 12px; }
+  .modal .btn { margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏆 Mundial 2026 <small>Pronostica todos los 104 partidos • Canadá, México, EE.UU.</small></h1>
+  <p style="font-size:0.75rem;color:var(--muted);margin-top:8px">
+    📊 % = Prob. de clasificar a top 2 del grupo — 
+    <a href="https://panmureliberum.com/media/3179/strs_1031724.pdf" target="_blank" style="color:var(--accent)">Fuente: Panmure Liberum</a>
+  </p>
+</header>
+
+<div class="container">
+  <!-- Stats -->
+  <div class="stats-bar" id="stats"></div>
+
+  <!-- Tabs -->
+  <div class="tab-bar" id="tabBar"></div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn btn-danger" onclick="clearAll()">🗑️ Borrar todo</button>
+    <button class="btn btn-outline" onclick="exportData()">📥 Exportar JSON</button>
+    <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">📤 Importar JSON</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    <button class="btn btn-outline" onclick="clearActuals()">🧹 Limpiar resultados reales</button>
+    <button class="btn btn-primary" onclick="fetchFifaResults()">🤖 Fetch Resultados FIFA</button>
+    <button class="btn btn-outline" onclick="saveToServer()">💾 Sync Save</button>
+    <button class="btn btn-outline" onclick="loadFromServer()">📥 Sync Load</button>
+  </div>
+
+  <!-- Match list -->
+  <div id="matchArea"></div>
+  
+  <!-- Legend -->
+  <div style="margin-top: 20px; padding: 12px; background: var(--card); border-radius: 8px; font-size: 0.8rem; color: var(--muted);">
+    <strong>Leyenda:</strong> 
+    <span style="color:var(--accent)">🔵</span> Pronóstico ingresado &nbsp;
+    <span style="color:var(--green)">🟢</span> Ganador correcto &nbsp;
+    <span style="color:var(--red)">🔴</span> Ganador incorrecto &nbsp;
+    <span style="color:var(--amber)">🟡</span> % Prob. top 2 grupo (Panmure Liberum) &nbsp;
+    <span class="model-pred" style="display:inline;padding:1px 6px;">📊 Modelo Panmure</span>
+  </div>
+  <div style="margin-top: 8px; padding: 8px 12px; background: var(--card); border-radius: 8px; font-size: 0.7rem; color: var(--muted); text-align: center;">
+    📄 Pronóstico basado en <a href="https://panmureliberum.com/media/3179/strs_1031724.pdf" target="_blank" style="color:var(--accent)">Panmure Liberum — FIFA World Cup Predictions (9 Abril 2026)</a>
+  </div>
+</div>
+
+<script>
+// ==================== DATA ====================
+// ==================== TEAM PROBABILITIES (Panmure Liberum) ====================
+// Source: https://panmureliberum.com/media/3179/strs_1031724.pdf (Fig 1, p.9)
+// Likelihood of making it into top 2 in each group
+const TEAM_PROB = {
+  'Switzerland':'90%','Qatar':'43%','Canada':'35%','Bosnia and Herzegovina':'32%',
+  'South Korea':'72%','Czech Republic':'52%','Mexico':'44%','South Africa':'33%',
+  'Brazil':'99%','Morocco':'59%','Scotland':'38%','Haiti':'5%',
+  'Australia':'61%','Turkey':'59%','United States':'43%','Paraguay':'37%',
+  'Germany':'93%','Ecuador':'65%','Ivory Coast':'37%','Curaçao':'5%',
+  'Netherlands':'73%','Japan':'58%','Sweden':'41%','Tunisia':'28%',
+  'Belgium':'85%','Iran':'57%','Egypt':'43%','New Zealand':'15%',
+  'Spain':'99%','Uruguay':'63%','Saudi Arabia':'25%','Cape Verde':'13%',
+  'France':'85%','Senegal':'48%','Norway':'41%','Iraq':'25%',
+  'Argentina':'91%','Austria':'52%','Algeria':'40%','Jordan':'17%',
+  'Portugal':'77%','Colombia':'73%','Uzbekistan':'28%','DR Congo':'23%',
+  'England':'89%','Croatia':'70%','Panama':'36%','Ghana':'5%'
+};
+function getTeamProb(name) { return TEAM_PROB[cleanText(name)] || ''; }
+
+const ALL_MATCHES = [{"match": 1, "date": "June 11, 2026 (2026-06-11)", "time": "1:00 p.m. UTC−6", "home": "Mexico", "away": "South Africa", "venue": "Estadio Azteca", "city": "Mexico City"}, {"match": 2, "date": "June 11, 2026 (2026-06-11)", "time": "8:00 p.m. UTC−6", "home": "South Korea", "away": "Czech Republic", "venue": "Estadio Akron", "city": "Zapopan"}, {"match": 3, "date": "June 12, 2026 (2026-06-12)", "time": "3:00 p.m. UTC−4", "home": "Canada", "away": "Bosnia and Herzegovina", "venue": "BMO Field", "city": "Toronto"}, {"match": 4, "date": "June 12, 2026 (2026-06-12)", "time": "6:00 p.m. UTC−7", "home": "United States", "away": "Paraguay", "venue": "SoFi Stadium", "city": "Inglewood"}, {"match": 5, "date": "June 13, 2026 (2026-06-13)", "time": "9:00 p.m. UTC−4", "home": "Haiti", "away": "Scotland", "venue": "Gillette Stadium", "city": "Foxborough"}, {"match": 6, "date": "June 13, 2026 (2026-06-13)", "time": "9:00 p.m. UTC−7", "home": "Australia", "away": "Turkey", "venue": "BC Place", "city": "Vancouver"}, {"match": 7, "date": "June 13, 2026 (2026-06-13)", "time": "6:00 p.m. UTC−4", "home": "Brazil", "away": "Morocco", "venue": "MetLife Stadium", "city": "East Rutherford"}, {"match": 8, "date": "June 13, 2026 (2026-06-13)", "time": "12:00 p.m. UTC−7", "home": "Qatar", "away": "Switzerland", "venue": "Levi's Stadium", "city": "Santa Clara"}, {"match": 9, "date": "June 14, 2026 (2026-06-14)", "time": "7:00 p.m. UTC−4", "home": "Ivory Coast", "away": "Ecuador", "venue": "Lincoln Financial Field", "city": "Philadelphia"}, {"match": 10, "date": "June 14, 2026 (2026-06-14)", "time": "12:00 p.m. UTC−5", "home": "Germany", "away": "Curaçao", "venue": "NRG Stadium", "city": "Houston"}, {"match": 11, "date": "June 14, 2026 (2026-06-14)", "time": "3:00 p.m. UTC−5", "home": "Netherlands", "away": "Japan", "venue": "AT&T Stadium", "city": "Arlington"}, {"match": 12, "date": "June 14, 2026 (2026-06-14)", "time": "8:00 p.m. UTC−6", "home": "Sweden", "away": "Tunisia", "venue": "Estadio BBVA", "city": "Guadalupe"}, {"match": 13, "date": "June 15, 2026 (2026-06-15)", "time": "6:00 p.m. UTC−4", "home": "Saudi Arabia", "away": "Uruguay", "venue": "Hard Rock Stadium", "city": "Miami Gardens"}, {"match": 14, "date": "June 15, 2026 (2026-06-15)", "time": "12:00 p.m. UTC−4", "home": "Spain", "away": "Cape Verde", "venue": "Mercedes-Benz Stadium", "city": "Atlanta"}, {"match": 15, "date": "June 15, 2026 (2026-06-15)", "time": "6:00 p.m. UTC−7", "home": "Iran", "away": "New Zealand", "venue": "SoFi Stadium", "city": "Inglewood"}, {"match": 16, "date": "June 15, 2026 (2026-06-15)", "time": "12:00 p.m. UTC−7", "home": "Belgium", "away": "Egypt", "venue": "Lumen Field", "city": "Seattle"}, {"match": 17, "date": "June 16, 2026 (2026-06-16)", "time": "3:00 p.m. UTC−4", "home": "France", "away": "Senegal", "venue": "MetLife Stadium", "city": "East Rutherford"}, {"match": 18, "date": "June 16, 2026 (2026-06-16)", "time": "6:00 p.m. UTC−4", "home": "Iraq", "away": "Norway", "venue": "Gillette Stadium", "city": "Foxborough"}, {"match": 19, "date": "June 16, 2026 (2026-06-16)", "time": "8:00 p.m. UTC−5", "home": "Argentina", "away": "Algeria", "venue": "Arrowhead Stadium", "city": "Kansas City"}, {"match": 20, "date": "June 16, 2026 (2026-06-16)", "time": "9:00 p.m. UTC−7", "home": "Austria", "away": "Jordan", "venue": "Levi's Stadium", "city": "Santa Clara"}, {"match": 21, "date": "June 17, 2026 (2026-06-17)", "time": "7:00 p.m. UTC−4", "home": "Ghana", "away": "Panama", "venue": "Toronto Stadium", "city": "Toronto"}, {"match": 22, "date": "June 17, 2026 (2026-06-17)", "time": "3:00 p.m. UTC−5", "home": "England", "away": "Croatia", "venue": "AT&T Stadium", "city": "Arlington"}, {"match": 23, "date": "June 17, 2026 (2026-06-17)", "time": "12:00 p.m. UTC−5", "home": "Portugal", "away": "DR Congo", "venue": "NRG Stadium", "city": "Houston"}, {"match": 24, "date": "June 17, 2026 (2026-06-17)", "time": "8:00 p.m. UTC−6", "home": "Uzbekistan", "away": "Colombia", "venue": "Estadio Azteca", "city": "Mexico City"}, {"match": 25, "date": "June 18, 2026 (2026-06-18)", "time": "12:00 p.m. UTC−4", "home": "Czech Republic", "away": "South Africa", "venue": "Mercedes-Benz Stadium", "city": "Atlanta"}, {"match": 26, "date": "June 18, 2026 (2026-06-18)", "time": "12:00 p.m. UTC−7", "home": "Switzerland", "away": "Bosnia and Herzegovina", "venue": "SoFi Stadium", "city": "Inglewood"}, {"match": 27, "date": "June 18, 2026 (2026-06-18)", "time": "3:00 p.m. UTC−7", "home": "Canada", "away": "Qatar", "venue": "BC Place", "city": "Vancouver"}, {"match": 28, "date": "June 18, 2026 (2026-06-18)", "time": "7:00 p.m. UTC−6", "home": "Mexico", "away": "South Korea", "venue": "Estadio Akron", "city": "Zapopan"}, {"match": 29, "date": "June 19, 2026 (2026-06-19)", "time": "8:30 p.m. UTC−4", "home": "Brazil", "away": "Haiti", "venue": "Lincoln Financial Field", "city": "Philadelphia"}, {"match": 30, "date": "June 19, 2026 (2026-06-19)", "time": "6:00 p.m. UTC−4", "home": "Scotland", "away": "Morocco", "venue": "Gillette Stadium", "city": "Foxborough"}, {"match": 31, "date": "June 19, 2026 (2026-06-19)", "time": "8:00 p.m. UTC−7", "home": "Turkey", "away": "Paraguay", "venue": "Levi's Stadium", "city": "Santa Clara"}, {"match": 32, "date": "June 19, 2026 (2026-06-19)", "time": "12:00 p.m. UTC−7", "home": "United States", "away": "Australia", "venue": "Lumen Field", "city": "Seattle"}, {"match": 33, "date": "June 20, 2026 (2026-06-20)", "time": "4:00 p.m. UTC−4", "home": "Germany", "away": "Ivory Coast", "venue": "BMO Field", "city": "Toronto"}, {"match": 34, "date": "June 20, 2026 (2026-06-20)", "time": "7:00 p.m. UTC−5", "home": "Ecuador", "away": "Curaçao", "venue": "Arrowhead Stadium", "city": "Kansas City"}, {"match": 35, "date": "June 20, 2026 (2026-06-20)", "time": "12:00 p.m. UTC−5", "home": "Netherlands", "away": "Sweden", "venue": "NRG Stadium", "city": "Houston"}, {"match": 36, "date": "June 20, 2026 (2026-06-20)", "time": "10:00 p.m. UTC−6", "home": "Tunisia", "away": "Japan", "venue": "Estadio BBVA", "city": "Guadalupe"}, {"match": 37, "date": "June 21, 2026 (2026-06-21)", "time": "6:00 p.m. UTC−4", "home": "Uruguay", "away": "Cape Verde", "venue": "Hard Rock Stadium", "city": "Miami Gardens"}, {"match": 38, "date": "June 21, 2026 (2026-06-21)", "time": "12:00 p.m. UTC−4", "home": "Spain", "away": "Saudi Arabia", "venue": "Mercedes-Benz Stadium", "city": "Atlanta"}, {"match": 39, "date": "June 21, 2026 (2026-06-21)", "time": "12:00 p.m. UTC−7", "home": "Belgium", "away": "Iran", "venue": "SoFi Stadium", "city": "Inglewood"}, {"match": 40, "date": "June 21, 2026 (2026-06-21)", "time": "6:00 p.m. UTC−7", "home": "New Zealand", "away": "Egypt", "venue": "BC Place", "city": "Vancouver"}, {"match": 41, "date": "June 22, 2026 (2026-06-22)", "time": "8:00 p.m. UTC−4", "home": "Norway", "away": "Senegal", "venue": "MetLife Stadium", "city": "East Rutherford"}, {"match": 42, "date": "June 22, 2026 (2026-06-22)", "time": "5:00 p.m. UTC−4", "home": "France", "away": "Iraq", "venue": "Lincoln Financial Field", "city": "Philadelphia"}, {"match": 43, "date": "June 22, 2026 (2026-06-22)", "time": "12:00 p.m. UTC−5", "home": "Argentina", "away": "Austria", "venue": "AT&T Stadium", "city": "Arlington"}, {"match": 44, "date": "June 22, 2026 (2026-06-22)", "time": "8:00 p.m. UTC−7", "home": "Jordan", "away": "Algeria", "venue": "Levi's Stadium", "city": "Santa Clara"}, {"match": 45, "date": "June 23, 2026 (2026-06-23)", "time": "4:00 p.m. UTC−4", "home": "England", "away": "Ghana", "venue": "Gillette Stadium", "city": "Foxborough"}, {"match": 46, "date": "June 23, 2026 (2026-06-23)", "time": "7:00 p.m. UTC−4", "home": "Panama", "away": "Croatia", "venue": "Toronto Stadium", "city": "Toronto"}, {"match": 47, "date": "June 23, 2026 (2026-06-23)", "time": "12:00 p.m. UTC−5", "home": "Portugal", "away": "Uzbekistan", "venue": "NRG Stadium", "city": "Houston"}, {"match": 48, "date": "June 23, 2026 (2026-06-23)", "time": "8:00 p.m. UTC−6", "home": "Colombia", "away": "DR Congo", "venue": "Estadio Akron", "city": "Zapopan"}, {"match": 49, "date": "June 24, 2026 (2026-06-24)", "time": "6:00 p.m. UTC−4", "home": "Scotland", "away": "Brazil", "venue": "Hard Rock Stadium", "city": "Miami Gardens"}, {"match": 50, "date": "June 24, 2026 (2026-06-24)", "time": "6:00 p.m. UTC−4", "home": "Morocco", "away": "Haiti", "venue": "Mercedes-Benz Stadium", "city": "Atlanta"}, {"match": 51, "date": "June 24, 2026 (2026-06-24)", "time": "12:00 p.m. UTC−7", "home": "Switzerland", "away": "Canada", "venue": "BC Place", "city": "Vancouver"}, {"match": 52, "date": "June 24, 2026 (2026-06-24)", "time": "12:00 p.m. UTC−7", "home": "Bosnia and Herzegovina", "away": "Qatar", "venue": "Lumen Field", "city": "Seattle"}, {"match": 53, "date": "June 24, 2026 (2026-06-24)", "time": "7:00 p.m. UTC−6", "home": "Czech Republic", "away": "Mexico", "venue": "Estadio Azteca", "city": "Mexico City"}, {"match": 54, "date": "June 24, 2026 (2026-06-24)", "time": "7:00 p.m. UTC−6", "home": "South Africa", "away": "South Korea", "venue": "Estadio BBVA", "city": "Guadalupe"}, {"match": 55, "date": "June 25, 2026 (2026-06-25)", "time": "4:00 p.m. UTC−4", "home": "Curaçao", "away": "Ivory Coast", "venue": "Lincoln Financial Field", "city": "Philadelphia"}, {"match": 56, "date": "June 25, 2026 (2026-06-25)", "time": "4:00 p.m. UTC−4", "home": "Ecuador", "away": "Germany", "venue": "MetLife Stadium", "city": "East Rutherford"}, {"match": 57, "date": "June 25, 2026 (2026-06-25)", "time": "6:00 p.m. UTC−5", "home": "Japan", "away": "Sweden", "venue": "AT&T Stadium", "city": "Arlington"}, {"match": 58, "date": "June 25, 2026 (2026-06-25)", "time": "6:00 p.m. UTC−5", "home": "Tunisia", "away": "Netherlands", "venue": "Arrowhead Stadium", "city": "Kansas City"}, {"match": 59, "date": "June 25, 2026 (2026-06-25)", "time": "7:00 p.m. UTC−7", "home": "Turkey", "away": "United States", "venue": "SoFi Stadium", "city": "Inglewood"}, {"match": 60, "date": "June 25, 2026 (2026-06-25)", "time": "7:00 p.m. UTC−7", "home": "Paraguay", "away": "Australia", "venue": "Levi's Stadium", "city": "Santa Clara"}, {"match": 61, "date": "June 26, 2026 (2026-06-26)", "time": "3:00 p.m. UTC−4", "home": "Norway", "away": "France", "venue": "Gillette Stadium", "city": "Foxborough"}, {"match": 62, "date": "June 26, 2026 (2026-06-26)", "time": "3:00 p.m. UTC−4", "home": "Senegal", "away": "Iraq", "venue": "BMO Field", "city": "Toronto"}, {"match": 63, "date": "June 26, 2026 (2026-06-26)", "time": "8:00 p.m. UTC−7", "home": "Egypt", "away": "Iran", "venue": "Lumen Field", "city": "Seattle"}, {"match": 64, "date": "June 26, 2026 (2026-06-26)", "time": "8:00 p.m. UTC−7", "home": "New Zealand", "away": "Belgium", "venue": "BC Place", "city": "Vancouver"}, {"match": 65, "date": "June 26, 2026 (2026-06-26)", "time": "7:00 p.m. UTC−5", "home": "Cape Verde", "away": "Saudi Arabia", "venue": "NRG Stadium", "city": "Houston"}, {"match": 66, "date": "June 26, 2026 (2026-06-26)", "time": "6:00 p.m. UTC−6", "home": "Uruguay", "away": "Spain", "venue": "Estadio Akron", "city": "Zapopan"}, {"match": 67, "date": "June 27, 2026 (2026-06-27)", "time": "5:00 p.m. UTC−4", "home": "Panama", "away": "England", "venue": "MetLife Stadium", "city": "East Rutherford"}, {"match": 68, "date": "June 27, 2026 (2026-06-27)", "time": "5:00 p.m. UTC−4", "home": "Croatia", "away": "Ghana", "venue": "Lincoln Financial Field", "city": "Philadelphia"}, {"match": 69, "date": "June 27, 2026 (2026-06-27)", "time": "9:00 p.m. UTC−5", "home": "Algeria", "away": "Austria", "venue": "Arrowhead Stadium", "city": "Kansas City"}, {"match": 70, "date": "June 27, 2026 (2026-06-27)", "time": "9:00 p.m. UTC−5", "home": "Jordan", "away": "Argentina", "venue": "AT&T Stadium", "city": "Arlington"}, {"match": 71, "date": "June 27, 2026 (2026-06-27)", "time": "7:30 p.m. UTC−4", "home": "Colombia", "away": "Portugal", "venue": "Hard Rock Stadium", "city": "Miami Gardens"}, {"match": 72, "date": "June 27, 2026 (2026-06-27)", "time": "7:30 p.m. UTC−4", "home": "DR Congo", "away": "Uzbekistan", "venue": "Mercedes-Benz Stadium", "city": "Atlanta"}, {"match": 73, "date": "June 28, 2026 (2026-06-28)", "time": "12:00 p.m. UTC−7", "home": "Match 73", "away": "", "venue": "SoFi Stadium", "city": "Inglewood"}, {"match": 74, "date": "June 29, 2026 (2026-06-29)", "time": "4:30 p.m. UTC−4", "home": "Match 74", "away": "", "venue": "Gillette Stadium", "city": "Foxborough"}, {"match": 75, "date": "June 29, 2026 (2026-06-29)", "time": "7:00 p.m. UTC−6", "home": "Match 75", "away": "", "venue": "Estadio BBVA", "city": "Guadalupe"}, {"match": 76, "date": "June 29, 2026 (2026-06-29)", "time": "12:00 p.m. UTC−5", "home": "Match 76", "away": "", "venue": "NRG Stadium", "city": "Houston"}, {"match": 77, "date": "June 30, 2026 (2026-06-30)", "time": "5:00 p.m. UTC−4", "home": "Match 77", "away": "", "venue": "MetLife Stadium", "city": "East Rutherford"}, {"match": 78, "date": "June 30, 2026 (2026-06-30)", "time": "12:00 p.m. UTC−5", "home": "Match 78", "away": "", "venue": "AT&T Stadium", "city": "Arlington"}, {"match": 79, "date": "June 30, 2026 (2026-06-30)", "time": "7:00 p.m. UTC−6", "home": "Match 79", "away": "", "venue": "Estadio Azteca", "city": "Mexico City"}, {"match": 80, "date": "July 1, 2026 (2026-07-01)", "time": "12:00 p.m. UTC−4", "home": "Match 80", "away": "", "venue": "Mercedes-Benz Stadium", "city": "Atlanta"}, {"match": 81, "date": "July 1, 2026 (2026-07-01)", "time": "5:00 p.m. UTC−7", "home": "Match 81", "away": "", "venue": "Levi's Stadium", "city": "Santa Clara"}, {"match": 82, "date": "July 1, 2026 (2026-07-01)", "time": "1:00 p.m. UTC−7", "home": "Match 82", "away": "", "venue": "Lumen Field", "city": "Seattle"}, {"match": 83, "date": "July 2, 2026 (2026-07-02)", "time": "7:00 p.m. UTC−4", "home": "Match 83", "away": "", "venue": "BMO Field", "city": "Toronto"}, {"match": 84, "date": "July 2, 2026 (2026-07-02)", "time": "12:00 p.m. UTC−7", "home": "Match 84", "away": "", "venue": "SoFi Stadium", "city": "Inglewood"}, {"match": 85, "date": "July 2, 2026 (2026-07-02)", "time": "8:00 p.m. UTC−7", "home": "Match 85", "away": "", "venue": "BC Place", "city": "Vancouver"}, {"match": 86, "date": "July 3, 2026 (2026-07-03)", "time": "6:00 p.m. UTC−4", "home": "Match 86", "away": "", "venue": "Hard Rock Stadium", "city": "Miami Gardens"}, {"match": 87, "date": "July 3, 2026 (2026-07-03)", "time": "8:30 p.m. UTC−5", "home": "Match 87", "away": "", "venue": "Arrowhead Stadium", "city": "Kansas City"}, {"match": 88, "date": "July 3, 2026 (2026-07-03)", "time": "1:00 p.m. UTC−5", "home": "Match 88", "away": "", "venue": "AT&T Stadium", "city": "Arlington"}, {"match": 89, "date": "July 4, 2026 (2026-07-04)", "time": "5:00 p.m. UTC−4", "home": "Match 89", "away": "", "venue": "Lincoln Financial Field", "city": "Philadelphia"}, {"match": 90, "date": "July 4, 2026 (2026-07-04)", "time": "12:00 p.m. UTC−5", "home": "Match 90", "away": "", "venue": "NRG Stadium", "city": "Houston"}, {"match": 91, "date": "July 5, 2026 (2026-07-05)", "time": "4:00 p.m. UTC−4", "home": "Match 91", "away": "", "venue": "MetLife Stadium", "city": "East Rutherford"}, {"match": 92, "date": "July 5, 2026 (2026-07-05)", "time": "6:00 p.m. UTC−6", "home": "Match 92", "away": "", "venue": "Estadio Azteca", "city": "Mexico City"}, {"match": 93, "date": "July 6, 2026 (2026-07-06)", "time": "2:00 p.m. UTC−5", "home": "Match 93", "away": "", "venue": "AT&T Stadium", "city": "Arlington"}, {"match": 94, "date": "July 6, 2026 (2026-07-06)", "time": "5:00 p.m. UTC−7", "home": "Match 94", "away": "", "venue": "Lumen Field", "city": "Seattle"}, {"match": 95, "date": "July 7, 2026 (2026-07-07)", "time": "12:00 p.m. UTC−4", "home": "Match 95", "away": "", "venue": "Mercedes-Benz Stadium", "city": "Atlanta"}, {"match": 96, "date": "July 7, 2026 (2026-07-07)", "time": "1:00 p.m. UTC−7", "home": "Match 96", "away": "", "venue": "BC Place", "city": "Vancouver"}, {"match": 97, "date": "July 9, 2026 (2026-07-09)", "time": "4:00 p.m. UTC−4", "home": "Match 97", "away": "", "venue": "Gillette Stadium", "city": "Foxborough"}, {"match": 98, "date": "July 10, 2026 (2026-07-10)", "time": "12:00 p.m. UTC−7", "home": "Match 98", "away": "", "venue": "SoFi Stadium", "city": "Inglewood"}, {"match": 99, "date": "July 11, 2026 (2026-07-11)", "time": "5:00 p.m. UTC−4", "home": "Match 99", "away": "", "venue": "Hard Rock Stadium", "city": "Miami Gardens"}, {"match": 100, "date": "July 11, 2026 (2026-07-11)", "time": "8:00 p.m. UTC−5", "home": "Match 100", "away": "", "venue": "Arrowhead Stadium", "city": "Kansas City"}, {"match": 101, "date": "July 14, 2026 (2026-07-14)", "time": "2:00 p.m. UTC−5", "home": "Match 101", "away": "", "venue": "AT&T Stadium", "city": "Arlington"}, {"match": 102, "date": "July 15, 2026 (2026-07-15)", "time": "3:00 p.m. UTC−4", "home": "Match 102", "away": "", "venue": "Mercedes-Benz Stadium", "city": "Atlanta"}, {"match": 103, "date": "July 18, 2026 (2026-07-18)", "time": "5:00 p.m. UTC−4", "home": "Match 103", "away": "", "venue": "Hard Rock Stadium", "city": "Miami Gardens"}, {"match": 104, "date": "July 19, 2026 (2026-07-19)", "time": "3:00 p.m. UTC−4", "home": "Match 104", "away": "", "venue": "MetLife Stadium", "city": "East Rutherford"}];
+
+// Panmure Liberum Model Predictions (for reference)
+const MODEL_PREDS = {
+  // Group stage winner predictions (from the PDF)
+  groups: {
+    A: { 1: { home: 2, away: 0 }, 2: { home: 1, away: 1 }, 25: { home: 2, away: 1 }, 28: { home: 2, away: 1 }, 53: { home: 1, away: 2 }, 54: { home: 0, away: 2 } },
+    B: { 3: { home: 2, away: 0 }, 8: { home: 0, away: 2 }, 26: { home: 2, away: 0 }, 27: { home: 2, away: 1 }, 51: { home: 2, away: 0 }, 52: { home: 1, away: 1 } },
+    C: { 5: { home: 1, away: 3 }, 7: { home: 3, away: 0 }, 29: { home: 4, away: 0 }, 30: { home: 0, away: 2 }, 49: { home: 0, away: 3 }, 50: { home: 1, away: 1 } },
+    D: { 4: { home: 2, away: 1 }, 6: { home: 2, away: 1 }, 31: { home: 1, away: 1 }, 32: { home: 2, away: 1 }, 59: { home: 1, away: 2 }, 60: { home: 0, away: 2 } },
+    E: { 9: { home: 1, away: 2 }, 10: { home: 4, away: 0 }, 33: { home: 2, away: 0 }, 34: { home: 2, away: 0 }, 55: { home: 0, away: 2 }, 56: { home: 1, away: 2 } },
+    F: { 11: { home: 2, away: 1 }, 12: { home: 2, away: 0 }, 35: { home: 2, away: 0 }, 36: { home: 1, away: 1 }, 57: { home: 2, away: 1 }, 58: { home: 0, away: 2 } },
+    G: { 15: { home: 2, away: 1 }, 16: { home: 2, away: 0 }, 39: { home: 2, away: 0 }, 40: { home: 1, away: 1 }, 63: { home: 1, away: 2 }, 64: { home: 0, away: 3 } },
+    H: { 13: { home: 0, away: 3 }, 14: { home: 4, away: 0 }, 37: { home: 2, away: 0 }, 38: { home: 3, away: 0 }, 65: { home: 1, away: 2 }, 66: { home: 0, away: 2 } },
+    I: { 17: { home: 2, away: 0 }, 18: { home: 0, away: 2 }, 41: { home: 2, away: 1 }, 42: { home: 3, away: 0 }, 61: { home: 1, away: 2 }, 62: { home: 2, away: 0 } },
+    J: { 19: { home: 2, away: 0 }, 20: { home: 2, away: 0 }, 43: { home: 2, away: 0 }, 44: { home: 0, away: 2 }, 69: { home: 0, away: 2 }, 70: { home: 0, away: 2 } },
+    K: { 23: { home: 2, away: 0 }, 24: { home: 0, away: 2 }, 47: { home: 2, away: 0 }, 48: { home: 2, away: 0 }, 71: { home: 1, away: 2 }, 72: { home: 0, away: 2 } },
+    L: { 21: { home: 1, away: 2 }, 22: { home: 3, away: 0 }, 45: { home: 2, away: 0 }, 46: { home: 0, away: 2 }, 67: { home: 1, away: 3 }, 68: { home: 2, away: 0 } }
+  },
+  // Knockout: model predicts Netherlands winner, Japan beats Brazil in R32
+  // We add narrative descriptions
+  narrative: {
+    round32: "Alemania vence a EE.UU., Portugal a Costa de Marfil, Francia a Suecia, España a Austria, Bélgica a México, Inglaterra a Noruega, Canadá a Rep.Checa, Países Bajos a Marruecos, Croacia a Colombia, Senegal a Ecuador, Corea del Sur a Escocia, Turquía a Irán, Australia a Argelia, Suiza a Egipto, Argentina a Uruguay, Japón vence a Brasil (sorpresa)",
+    round16: "Francia vence a Alemania, España a Croacia, Países Bajos a Canadá, Inglaterra a Corea del Sur, Argentina a Turquía, Bélgica a Australia, Japón a Senegal, Portugal a Suiza",
+    quarters: "Inglaterra vence a Japón, Portugal a Argentina, España a Bélgica, Países Bajos a Francia",
+    semis: "Países Bajos vence a España (penales), Portugal vence a Inglaterra",
+    third: "España vence a Inglaterra",
+    final: "Países Bajos 1-0 Portugal (Campeón)"
+  }
+};
+
+// ==================== APP STATE ====================
+let state = JSON.parse(localStorage.getItem('wc2026_preds') || '{}');
+let currentTab = 'all';
+
+// ==================== HELPERS ====================
+function matchTag(m) { return 'm' + m.match; }
+
+function getPred(matchNum) { return state[matchTag({match:matchNum})] || {}; }
+
+function getMatchByNum(n) { return ALL_MATCHES.find(m => m.match === n); }
+
+function toDateStr(raw) {
+  // "June&#160;11,&#160;2026&#160;(2026-06-11)" -> "11 Jun 2026"
+  const m = raw.match(/(\d{4}-\d{2}-\d{2})/);
+  if (m) {
+    const d = new Date(m[1]+'T12:00:00');
+    return d.toLocaleDateString('es-ES', {day:'numeric', month:'short', year:'numeric'});
+  }
+  return raw;
+}
+
+function cleanText(s) {
+  return s.replace(/&#160;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g,' ').trim();
+}
+
+// ==================== STAGES ====================
+function getStageName(m) {
+  if (m.match <= 72) return 'Fase de Grupos';
+  if (m.match <= 80) return 'Ronda de 32';
+  if (m.match <= 88) return 'Octavos de Final';
+  if (m.match <= 96) return 'Cuartos de Final';
+  if (m.match <= 99) return 'Semifinales';
+  if (m.match <= 100) return 'Tercer Puesto';
+  return 'Final';
+}
+
+function getGroupName(m) {
+  const groups = {
+    'Mexico':'A','South Korea':'A','Czech Republic':'A','South Africa':'A',
+    'Switzerland':'B','Qatar':'B','Canada':'B','Bosnia and Herzegovina':'B',
+    'Brazil':'C','Morocco':'C','Scotland':'C','Haiti':'C',
+    'Australia':'D','Turkey':'D','United States':'D','Paraguay':'D',
+    'Germany':'E','Ecuador':'E','Ivory Coast':'E','Curaçao':'E',
+    'Netherlands':'F','Japan':'F','Sweden':'F','Tunisia':'F',
+    'Belgium':'G','Iran':'G','Egypt':'G','New Zealand':'G',
+    'Spain':'H','Uruguay':'H','Saudi Arabia':'H','Cape Verde':'H',
+    'France':'I','Senegal':'I','Norway':'I','Iraq':'I',
+    'Argentina':'J','Austria':'J','Algeria':'J','Jordan':'J',
+    'Portugal':'K','Colombia':'K','Uzbekistan':'K','DR Congo':'K',
+    'England':'L','Croatia':'L','Panama':'L','Ghana':'L'
+  };
+  if (m.match <= 72) return 'Grupo ' + (groups[m.home] || '');
+  return '';
+}
+
+function getStageMatches(stageFilter) {
+  if (stageFilter === 'all') return ALL_MATCHES;
+  return ALL_MATCHES.filter(m => getStageName(m) === stageFilter || getGroupName(m) === stageFilter);
+}
+
+// ==================== RENDER ====================
+function render() {
+  renderStats();
+  renderTabs();
+  renderMatches();
+  localStorage.setItem('wc2026_preds', JSON.stringify(state));
+}
+
+function renderStats() {
+  const total = ALL_MATCHES.length;
+  const predicted = ALL_MATCHES.filter(m => {
+    const p = getPred(m.match);
+    return p.homePred !== undefined && p.awayPred !== undefined;
+  }).length;
+  
+  const withActual = ALL_MATCHES.filter(m => {
+    const p = getPred(m.match);
+    return p.homeActual !== undefined && p.awayActual !== undefined;
+  }).length;
+  
+  let correct = 0;
+  let wrong = 0;
+  for (const m of ALL_MATCHES) {
+    const p = getPred(m.match);
+    if (p.homeActual !== undefined && p.awayActual !== undefined && p.homePred !== undefined && p.awayPred !== undefined) {
+      const predWinner = p.homePred > p.awayPred ? 'h' : (p.awayPred > p.homePred ? 'a' : 'd');
+      const actualWinner = p.homeActual > p.awayActual ? 'h' : (p.awayActual > p.homeActual ? 'a' : 'd');
+      if (predWinner === actualWinner) correct++;
+      else wrong++;
+    }
+  }
+  
+  document.getElementById('stats').innerHTML = `
+    <div class="stat-card"><div class="num">${total}</div><div class="lbl">Total Partidos</div></div>
+    <div class="stat-card predicted"><div class="num">${predicted}</div><div class="lbl">Pronosticados</div></div>
+    <div class="stat-card"><div class="num">${withActual}</div><div class="lbl">Resultados Reales</div></div>
+    ${correct+wrong > 0 ? `
+      <div class="stat-card correct"><div class="num">${correct}</div><div class="lbl">Aciertos</div></div>
+      <div class="stat-card wrong"><div class="num">${wrong}</div><div class="lbl">Fallos</div></div>
+      <div class="stat-card"><div class="num">${correct+wrong > 0 ? Math.round(correct/(correct+wrong)*100) : 0}%</div><div class="lbl">Precisión</div></div>
+    ` : ''}
+  `;
+}
+
+function renderTabs() {
+  const stages = ['all', 'dia', 'Fase de Grupos', 'Ronda de 32', 'Octavos de Final', 'Cuartos de Final', 'Semifinales', 'Tercer Puesto', 'Final'];
+  const groups = ['Grupo A','Grupo B','Grupo C','Grupo D','Grupo E','Grupo F','Grupo G','Grupo H','Grupo I','Grupo J','Grupo K','Grupo L'];
+  
+  let html = '';
+  for (const s of stages) {
+    const labels = {'all':'📋 Todos', 'dia':'📅 Por Día'};
+    const label = labels[s] || s;
+    const count = s === 'dia' ? ALL_MATCHES.length : getStageMatches(s).length;
+    html += `<button class="tab-btn ${currentTab === s ? 'active' : ''}" onclick="switchTab('${s}')">${label} (${count})</button>`;
+  }
+  for (const g of groups) {
+    const count = getStageMatches(g).length;
+    html += `<button class="tab-btn ${currentTab === g ? 'active' : ''}" onclick="switchTab('${g}')">${g} (${count})</button>`;
+  }
+  document.getElementById('tabBar').innerHTML = html;
+}
+
+function renderMatches() {
+  let matches = getStageMatches(currentTab);
+  
+  // Group by day view
+  if (currentTab === 'dia') {
+    const days = {};
+    for (const m of ALL_MATCHES) {
+      const dayKey = m.date.replace(/&#160;/g,' ').replace(/\+.*$/,'').trim().replace(/\s+\(.*$/,'');
+      if (!days[dayKey]) days[dayKey] = [];
+      days[dayKey].push(m);
+    }
+    let html = '';
+    for (const [day, dayMs] of Object.entries(days)) {
+      html += `<div class="stage-header" style="cursor:default">📅 ${day} <span class="toggle">${dayMs.length} partidos</span></div>`;
+      html += `<div class="match-list">`;
+      for (const m of dayMs) html += renderMatchCard(m);
+      html += `</div>`;
+    }
+    document.getElementById('matchArea').innerHTML = html;
+    return;
+  }
+  
+  // Group by stage for phase tabs
+  if (currentTab === 'all') {
+    const stages = ['Fase de Grupos', 'Ronda de 32', 'Octavos de Final', 'Cuartos de Final', 'Semifinales', 'Tercer Puesto', 'Final'];
+    let html = '';
+    for (const stage of stages) {
+      const stageMs = ALL_MATCHES.filter(m => getStageName(m) === stage);
+      if (stageMs.length === 0) continue;
+      
+      // Sub-group groups for group stage
+      if (stage === 'Fase de Grupos') {
+        for (const g of ['A','B','C','D','E','F','G','H','I','J','K','L']) {
+          const groupMs = stageMs.filter(m => getGroupName(m) === 'Grupo ' + g);
+          if (groupMs.length === 0) continue;
+          html += `<div class="stage-header" onclick="switchTab('Grupo ${g}')">Grupo ${g} <span class="toggle">Ver →</span></div>`;
+          html += `<div class="match-list">`;
+          for (const m of groupMs) html += renderMatchCard(m);
+          html += `</div>`;
+        }
+      } else {
+        html += `<div class="stage-header">${stage}</div>`;
+        html += `<div class="match-list">`;
+        for (const m of stageMs) html += renderMatchCard(m);
+        html += `</div>`;
+      }
+    }
+    document.getElementById('matchArea').innerHTML = html;
+  } else {
+    let html = `<div class="match-list">`;
+    for (const m of matches) html += renderMatchCard(m);
+    html += `</div>`;
+    document.getElementById('matchArea').innerHTML = html;
+  }
+}
+
+function renderMatchCard(m) {
+  const p = getPred(m.match);
+  const tag = matchTag(m);
+  const hasPred = p.homePred !== undefined && p.awayPred !== undefined;
+  const hasActual = p.homeActual !== undefined && p.awayActual !== undefined;
+  
+  // Compare prediction vs actual
+  let matchClass = '';
+  let predScore = '', actualScore = '';
+  let actualMark = '';
+  
+  if (hasPred) {
+    matchClass = 'has-prediction';
+    predScore = `${p.homePred} - ${p.awayPred}`;
+  }
+  
+  if (hasActual) {
+    actualScore = `${p.homeActual} - ${p.awayActual}`;
+    if (hasPred) {
+      const pw = p.homePred > p.awayPred ? 'h' : (p.awayPred > p.homePred ? 'a' : 'd');
+      const aw = p.homeActual > p.awayActual ? 'h' : (p.awayActual > p.homeActual ? 'a' : 'd');
+      if (pw === aw) {
+        matchClass = 'correct-winner';
+        actualMark = '🟢';
+      } else {
+        matchClass = 'wrong-winner';
+        actualMark = '🔴';
+      }
+    }
+  }
+  
+  const isKnockout = m.match > 72;
+  const homeName = isKnockout && m.home.startsWith('Match') 
+    ? `<span class="knockout-team" onclick="setKnockoutTeam(${m.match},'home')">${m.home} ✏️</span>`
+    : `${cleanText(m.home)} <span class="team-prob">${getTeamProb(m.home)}</span>`;
+  const awayName = isKnockout && m.away.startsWith('Match')
+    ? `<span class="knockout-team" onclick="setKnockoutTeam(${m.match},'away')">${m.away} ✏️</span>`
+    : `${cleanText(m.away)} <span class="team-prob">${getTeamProb(m.away)}</span>`;
+  
+  const modelPred = MODEL_PREDS.groups[m.home] || MODEL_PREDS.narrative;
+  
+  return `
+    <div class="match-card ${matchClass}" id="card-${tag}">
+      <div class="match-info">
+        <span>#${m.match}</span>
+        <span>${toDateStr(m.date)}</span>
+        <span>${cleanText(m.time)}</span>
+        <span>${cleanText(m.venue)}, ${cleanText(m.city)}</span>
+        ${getGroupName(m) ? `<span>${getGroupName(m)}</span>` : ''}
+      </div>
+      <div class="match-team home">${homeName}</div>
+      <div class="match-vs">${hasPred ? predScore : 'vs'}</div>
+      <div class="match-team away">${awayName}</div>
+      
+      <div class="score-inputs">
+        <label>Pronóstico:</label>
+        <input type="number" min="0" max="20" value="${p.homePred ?? ''}" 
+               onchange="setPred(${m.match},'homePred',this.value)" placeholder="L">
+        <span>-</span>
+        <input type="number" min="0" max="20" value="${p.awayPred ?? ''}" 
+               onchange="setPred(${m.match},'awayPred',this.value)" placeholder="V">
+        
+        <span style="margin:0 8px;color:var(--muted)">|</span>
+        
+        <label>Real:</label>
+        <input type="number" min="0" max="20" value="${p.homeActual ?? ''}" 
+               onchange="setPred(${m.match},'homeActual',this.value)" placeholder="L">
+        <span>-</span>
+        <input type="number" min="0" max="20" value="${p.awayActual ?? ''}" 
+               onchange="setPred(${m.match},'awayActual',this.value)" placeholder="V">
+        <span class="actual-mark ${matchClass === 'correct-winner' ? 'correct' : (matchClass === 'wrong-winner' ? 'wrong' : '')}">${actualMark}</span>
+      </div>
+    </div>
+  `;
+}
+
+// ==================== ACTIONS ====================
+function setPred(matchNum, key, val) {
+  const tag = 'm' + matchNum;
+  if (!state[tag]) state[tag] = {};
+  state[tag][key] = val === '' ? undefined : parseInt(val);
+  render();
+  showToast('✅ Guardado');
+  autoSync();
+}
+
+function setKnockoutTeam(matchNum, side) {
+  const team = prompt(`Nombre del equipo ${side === 'home' ? 'local' : 'visitante'} para el partido #${matchNum}:`);
+  if (team && team.trim()) {
+    const m = getMatchByNum(matchNum);
+    if (m) {
+      if (side === 'home') m.home = team.trim();
+      else m.away = team.trim();
+      render();
+      showToast(`✏️ ${team.trim()} asignado al partido #${matchNum}`);
+    }
+  }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  render();
+}
+
+function clearAll() {
+  if (confirm('¿Borrar todos los pronósticos y resultados?')) {
+    state = {};
+    // Reset knockout team names
+    for (const m of ALL_MATCHES) {
+      if (m.match > 72) {
+        m.home = 'Match ' + m.match;
+        m.away = '';
+      }
+    }
+    render();
+    showToast('🗑️ Todo borrado');
+  }
+}
+
+function clearActuals() {
+  if (confirm('¿Limpiar solo los resultados reales?')) {
+    for (const tag of Object.keys(state)) {
+      delete state[tag].homeActual;
+      delete state[tag].awayActual;
+    }
+    render();
+    showToast('🧹 Resultados reales limpiados');
+  }
+}
+
+function exportData() {
+  const data = { state, knockoutTeams: {} };
+  for (const m of ALL_MATCHES) {
+    if (m.match > 72) {
+      data.knockoutTeams[m.match] = { home: m.home, away: m.away };
+    }
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mundial2026_pronosticos.json';
+  a.click();
+  showToast('📥 Exportado');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (data.state) state = data.state;
+      if (data.knockoutTeams) {
+        for (const [num, teams] of Object.entries(data.knockoutTeams)) {
+          const m = getMatchByNum(parseInt(num));
+          if (m) {
+            m.home = teams.home;
+            m.away = teams.away;
+          }
+        }
+      }
+      render();
+      showToast('📤 Importado correctamente');
+    } catch(err) {
+      showToast('❌ Error al importar: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2000);
+}
+
+// ==================== FIFA API ====================
+async function fetchFifaResults() {
+  showToast('🤖 Consultando API FIFA...');
+  try {
+    // idCompetition=17 is the FIFA World Cup (men's)
+    const url = 'https://api.fifa.com/api/v3/calendar/matches?idCompetition=17&from=2026-06-01&to=2026-07-19&count=150';
+    const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const data = await resp.json();
+    const results = data.Results || [];
+    
+    // Build team name mapping (FIFA names -> our names)
+    const teamMap = {
+      'Mexico':'Mexico','Korea Republic':'South Korea','Czechia':'Czech Republic','South Africa':'South Africa',
+      'Switzerland':'Switzerland','Qatar':'Qatar','Canada':'Canada','Bosnia and Herzegovina':'Bosnia and Herzegovina',
+      'Brazil':'Brazil','Morocco':'Morocco','Scotland':'Scotland','Haiti':'Haiti',
+      'Australia':'Australia','Türkiye':'Turkey','USA':'United States','Paraguay':'Paraguay',
+      'Germany':'Germany','Ecuador':'Ecuador','Côte d\'Ivoire':'Ivory Coast','Curaçao':'Curaçao',
+      'Netherlands':'Netherlands','Japan':'Japan','Sweden':'Sweden','Tunisia':'Tunisia',
+      'Belgium':'Belgium','IR Iran':'Iran','Egypt':'Egypt','New Zealand':'New Zealand',
+      'Spain':'Spain','Uruguay':'Uruguay','Saudi Arabia':'Saudi Arabia','Cabo Verde':'Cape Verde',
+      'France':'France','Senegal':'Senegal','Norway':'Norway','Iraq':'Iraq',
+      'Argentina':'Argentina','Austria':'Austria','Algeria':'Algeria','Jordan':'Jordan',
+      'Portugal':'Portugal','Colombia':'Colombia','Uzbekistan':'Uzbekistan','Congo DR':'DR Congo',
+      'England':'England','Croatia':'Croatia','Panama':'Panama','Ghana':'Ghana'
+    };
+    
+    let filled = 0;
+    for (const r of results) {
+      // Get FIFA team names from nested TeamName array
+      const homeTeam = r.Home || r.HomeTeam || {};
+      const awayTeam = r.Away || r.AwayTeam || {};
+      const homeNames = Array.isArray(homeTeam.TeamName) ? homeTeam.TeamName : [];
+      const awayNames = Array.isArray(awayTeam.TeamName) ? awayTeam.TeamName : [];
+      const homeName = homeNames.length > 0 ? (homeNames[0]?.Description || '') : '';
+      const awayName = awayNames.length > 0 ? (awayNames[0]?.Description || '') : '';
+      const homeScore = r.HomeTeamScore ?? homeTeam.Score;
+      const awayScore = r.AwayTeamScore ?? awayTeam.Score;
+      
+      if (!homeName || !awayName || homeScore === undefined || awayScore === undefined) continue;
+      
+      const mappedHome = teamMap[homeName] || homeName;
+      const mappedAway = teamMap[awayName] || awayName;
+      
+      // Find matching match in our data
+      const match = ALL_MATCHES.find(m => 
+        (cleanText(m.home) === mappedHome && cleanText(m.away) === mappedAway) ||
+        (cleanText(m.home) === mappedAway && cleanText(m.away) === mappedHome)
+      );
+      
+      if (match) {
+        const tag = 'm' + match.match;
+        if (!state[tag]) state[tag] = {};
+        // Only fill if not already manually set
+        if (state[tag].homeActual === undefined || state[tag].awayActual === undefined) {
+          state[tag].homeActual = parseInt(homeScore);
+          state[tag].awayActual = parseInt(awayScore);
+          filled++;
+        }
+      }
+    }
+    
+    render();
+    showToast(`✅ FIFA API: ${filled} resultados actualizados`);
+  } catch (err) {
+    showToast('❌ Error FIFA API: ' + err.message);
+  }
+}
+
+// ==================== AUTO SYNC ====================
+let syncThrottle = null;
+function autoSync() {
+  clearTimeout(syncThrottle);
+  syncThrottle = setTimeout(() => {
+    const payload = { state, knockoutTeams: {} };
+    for (const m of ALL_MATCHES) {
+      if (m.match > 72) payload.knockoutTeams[m.match] = { home: m.home, away: m.away };
+    }
+    fetch(window.location.origin.replace(/:8081/,':8082') + '/save-predictions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+  }, 500);
+}
+
+async function loadFromServer() {
+  showToast('📥 Cargando desde servidor...');
+  try {
+    const resp = await fetch(window.location.origin.replace(/:8081/,':8082') + '/predictions.json');
+    if (!resp.ok) { showToast('📥 Sin backup en servidor'); return; }
+    const data = await resp.json();
+    if (data.state) {
+      state = data.state;
+      if (data.knockoutTeams) {
+        for (const [num, teams] of Object.entries(data.knockoutTeams)) {
+          const m = getMatchByNum(parseInt(num));
+          if (m) { m.home = teams.home; m.away = teams.away; }
+        }
+      }
+      render();
+      showToast('📥 Cargado desde servidor ✅');
+    }
+  } catch (err) {
+    console.log('Sync server not available, using localStorage');
+  }
+}
+
+async function saveToServer() {
+  showToast('💾 Guardando al servidor...');
+  try {
+    const payload = { state, knockoutTeams: {} };
+    for (const m of ALL_MATCHES) {
+      if (m.match > 72) payload.knockoutTeams[m.match] = { home: m.home, away: m.away };
+    }
+    const resp = await fetch(window.location.origin.replace(/:8081/,':8082') + '/save-predictions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (resp.ok) showToast('💾 Guardado en servidor ✅');
+    else showToast('❌ Error al guardar: ' + resp.status);
+  } catch (err) {
+    showToast('❌ Servidor no disponible');
+  }
+}
+
+// ==================== INIT ====================
+render();
+// Try to load from server backup (silent fail if server not ready)
+setTimeout(loadFromServer, 1000);
+</script>
+</body>
+</html>

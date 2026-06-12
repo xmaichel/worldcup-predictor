@@ -1,0 +1,8 @@
+# WCup Predictor — Server Dockerfile
+# Lightweight Python container for the persistence API
+
+FROM python:3.12-alpine
+WORKDIR /opt/wcup-predictor
+COPY server.py .
+EXPOSE 8082
+CMD ["python3", "server.py"]

@@ -1,0 +1,17 @@
+# Dependencies / build artifacts
+__pycache__/
+*.pyc
+.env
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data (keep in repo, but version carefully)
+# predictions.json is tracked — it's the app's database
