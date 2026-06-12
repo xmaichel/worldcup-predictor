@@ -649,7 +649,7 @@ async function fetchFifaResults() {
         const tag = 'm' + match.match;
         if (!state[tag]) state[tag] = {};
         // Only fill if not already manually set
-        if (state[tag].homeActual === undefined || state[tag].awayActual === undefined) {
+        if (state[tag].homeActual == null || state[tag].awayActual == null) {
           state[tag].homeActual = parseInt(homeScore);
           state[tag].awayActual = parseInt(awayScore);
           filled++;
