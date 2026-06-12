@@ -712,24 +712,35 @@ function autoSync() {
 }
 
 async function loadFromServer() {
-  showToast('📥 Cargando desde servidor...');
   try {
     const resp = await fetch(window.location.origin.replace(/:8081/,':8082') + '/predictions.json');
     if (!resp.ok) { showToast('📥 Sin backup en servidor'); return; }
     const data = await resp.json();
-    if (data.state) {
-      state = data.state;
-      if (data.knockoutTeams) {
-        for (const [num, teams] of Object.entries(data.knockoutTeams)) {
-          const m = getMatchByNum(parseInt(num));
-          if (m) { m.home = teams.home; m.away = teams.away; }
-        }
+    const serverState = data.state || {};
+    const serverKnockout = data.knockoutTeams || {};
+    // If localStorage has no state, use server state
+    const localStateStr = localStorage.getItem('wc2026_preds');
+    const localState = localStateStr ? JSON.parse(localStateStr) : {};
+    if (Object.keys(localState).length === 0) {
+      // No local data, use server
+      state = serverState;
+      for (const [num, teams] of Object.entries(serverKnockout)) {
+        const m = getMatchByNum(parseInt(num));
+        if (m) { m.home = teams.home; m.away = teams.away; }
       }
-      render();
+    } else {
+      // Keep local state, but maybe merge knockoutTeams from server if missing?
+      // For simplicity, keep local as is.
+    }
+    render();
+    if (Object.keys(localState).length === 0) {
       showToast('📥 Cargado desde servidor ✅');
+    } else {
+      showToast('💾 Usando datos locales');
     }
   } catch (err) {
     console.log('Sync server not available, using localStorage');
+    showToast('💾 Sin servidor, usando local');
   }
 }
 
