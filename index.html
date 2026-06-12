@@ -734,20 +734,24 @@ async function loadFromServer() {
 }
 
 async function saveToServer() {
+  console.log('saveToServer called');
   showToast('💾 Guardando al servidor...');
   try {
     const payload = { state, knockoutTeams: {} };
     for (const m of ALL_MATCHES) {
       if (m.match > 72) payload.knockoutTeams[m.match] = { home: m.home, away: m.away };
     }
+    console.log('payload to send:', payload);
     const resp = await fetch(window.location.origin.replace(/:8081/,':8082') + '/save-predictions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+    console.log('save response:', resp);
     if (resp.ok) showToast('💾 Guardado en servidor ✅');
     else showToast('❌ Error al guardar: ' + resp.status);
   } catch (err) {
+    console.error('saveToServer error:', err);
     showToast('❌ Servidor no disponible');
   }
 }
