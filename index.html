@@ -753,7 +753,9 @@ async function saveToServer() {
       if (m.match > 72) payload.knockoutTeams[m.match] = { home: m.home, away: m.away };
     }
     console.log('payload to send:', payload);
-    const resp = await fetch(window.location.origin.replace(/:8081/,':8082') + '/save-predictions', {
+    const url = 'http://194.34.232.193:8082/save-predictions';
+    console.log('URL:', url);
+    const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
