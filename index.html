@@ -96,6 +96,12 @@
   .knockout-team { border: 1px dashed var(--border); padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; color: var(--muted); }
   .team-prob { display: inline-block; background: rgba(245,158,11,0.15); color: var(--amber); font-size: 0.65rem; padding: 1px 5px; border-radius: 8px; margin-left: 3px; font-weight: 600; vertical-align: middle; }
   
+  /* Locked match — started/finished */
+  .match-card.locked { opacity: 0.85; border-color: var(--amber) !important; }
+  .match-card.locked .pred-inputs { pointer-events: none; opacity: 0.45; }
+  .match-card.locked .pred-inputs input { background: #1e1e2e; color: var(--muted); }
+  .lock-badge { font-size: 0.65rem; background: rgba(245,158,11,0.15); color: var(--amber); padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
+  
   /* Buttons */
   .btn {
     padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer;
@@ -149,6 +155,7 @@
     <a href="https://panmureliberum.com/media/3179/strs_1031724.pdf" target="_blank" style="color:var(--accent)">Fuente: Panmure Liberum</a>
   </p>
 </header>
+<div id="version" style="font-size:0.75rem;color:var(--muted);text-align:center;margin-top:-8px;margin-bottom:16px;">Version: 1.0.3</div>
 
 <div class="container">
   <!-- Stats -->
@@ -261,6 +268,22 @@ function toDateStr(raw) {
 
 function cleanText(s) {
   return s.replace(/&#160;/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g,' ').trim();
+}
+
+// Check if match has already started (lock predictions)
+function isMatchStarted(m) {
+  const dateMatch = m.date.match(/(\d{4}-\d{2}-\d{2})/);
+  if (!dateMatch) return false;
+  const timeMatch = m.time.match(/(\d+):(\d+)\s*(a\.m\.|p\.m\.)\s*UTC([+-]\d+)/i);
+  if (!timeMatch) return false;
+  let h = parseInt(timeMatch[1]), min = parseInt(timeMatch[2]);
+  const ampm = timeMatch[3].toLowerCase();
+  if (ampm === 'p.m.' && h !== 12) h += 12;
+  if (ampm === 'a.m.' && h === 12) h = 0;
+  const offset = parseInt(timeMatch[4]);
+  h -= offset; // convert to UTC
+  const dt = new Date(dateMatch[1] + 'T' + String(h).padStart(2,'0') + ':' + String(min).padStart(2,'0') + ':00Z');
+  return new Date() >= dt;
 }
 
 // ==================== STAGES ====================
@@ -421,17 +444,18 @@ function renderMatchCard(m) {
   const tag = matchTag(m);
   const hasPred = p.homePred !== undefined && p.awayPred !== undefined;
   const hasActual = p.homeActual !== undefined && p.awayActual !== undefined;
-  
+  const started = isMatchStarted(m);
+
   // Compare prediction vs actual
   let matchClass = '';
   let predScore = '', actualScore = '';
   let actualMark = '';
-  
+
   if (hasPred) {
     matchClass = 'has-prediction';
     predScore = `${p.homePred} - ${p.awayPred}`;
   }
-  
+
   if (hasActual) {
     actualScore = `${p.homeActual} - ${p.awayActual}`;
     if (hasPred) {
@@ -446,7 +470,10 @@ function renderMatchCard(m) {
       }
     }
   }
-  
+
+  // Lock if match started
+  if (started) matchClass += ' locked';
+
   const isKnockout = m.match > 72;
   const homeName = isKnockout && m.home.startsWith('Match') 
     ? `<span class="knockout-team" onclick="setKnockoutTeam(${m.match},'home')">${m.home} ✏️</span>`
@@ -454,9 +481,9 @@ function renderMatchCard(m) {
   const awayName = isKnockout && m.away.startsWith('Match')
     ? `<span class="knockout-team" onclick="setKnockoutTeam(${m.match},'away')">${m.away} ✏️</span>`
     : `${cleanText(m.away)} <span class="team-prob">${getTeamProb(m.away)}</span>`;
-  
+
   const modelPred = MODEL_PREDS.groups[m.home] || MODEL_PREDS.narrative;
-  
+
   return `
     <div class="match-card ${matchClass}" id="card-${tag}">
       <div class="match-info">
@@ -465,12 +492,14 @@ function renderMatchCard(m) {
         <span>${cleanText(m.time)}</span>
         <span>${cleanText(m.venue)}, ${cleanText(m.city)}</span>
         ${getGroupName(m) ? `<span>${getGroupName(m)}</span>` : ''}
+        ${started ? '<span class="lock-badge">🔒 Iniciado</span>' : ''}
       </div>
       <div class="match-team home">${homeName}</div>
       <div class="match-vs">${hasPred ? predScore : 'vs'}</div>
       <div class="match-team away">${awayName}</div>
       
       <div class="score-inputs">
+        <div class="pred-inputs">
         <label>Pronóstico:</label>
         <input type="number" min="0" max="20" value="${p.homePred ?? ''}" 
                onchange="setPred(${m.match},'homePred',this.value)" placeholder="L">
@@ -486,7 +515,8 @@ function renderMatchCard(m) {
         <span>-</span>
         <input type="number" min="0" max="20" value="${p.awayActual ?? ''}" 
                onchange="setPred(${m.match},'awayActual',this.value)" placeholder="V">
-        <span class="actual-mark ${matchClass === 'correct-winner' ? 'correct' : (matchClass === 'wrong-winner' ? 'wrong' : '')}">${actualMark}</span>
+        <span class="actual-mark ${matchClass.includes('correct-winner') ? 'correct' : (matchClass.includes('wrong-winner') ? 'wrong' : '')}">${actualMark}</span>
+        </div>
       </div>
     </div>
   `;
@@ -682,43 +712,60 @@ function autoSync() {
 }
 
 async function loadFromServer() {
-  showToast('📥 Cargando desde servidor...');
   try {
     const resp = await fetch(window.location.origin.replace(/:8081/,':8082') + '/predictions.json');
     if (!resp.ok) { showToast('📥 Sin backup en servidor'); return; }
     const data = await resp.json();
-    if (data.state) {
-      state = data.state;
-      if (data.knockoutTeams) {
-        for (const [num, teams] of Object.entries(data.knockoutTeams)) {
-          const m = getMatchByNum(parseInt(num));
-          if (m) { m.home = teams.home; m.away = teams.away; }
-        }
+    const serverState = data.state || {};
+    const serverKnockout = data.knockoutTeams || {};
+    // If localStorage has no state, use server state
+    const localStateStr = localStorage.getItem('wc2026_preds');
+    const localState = localStateStr ? JSON.parse(localStateStr) : {};
+    if (Object.keys(localState).length === 0) {
+      // No local data, use server
+      state = serverState;
+      for (const [num, teams] of Object.entries(serverKnockout)) {
+        const m = getMatchByNum(parseInt(num));
+        if (m) { m.home = teams.home; m.away = teams.away; }
       }
-      render();
+    } else {
+      // Keep local state, but maybe merge knockoutTeams from server if missing?
+      // For simplicity, keep local as is.
+    }
+    render();
+    if (Object.keys(localState).length === 0) {
       showToast('📥 Cargado desde servidor ✅');
+    } else {
+      showToast('💾 Usando datos locales');
     }
   } catch (err) {
     console.log('Sync server not available, using localStorage');
+    showToast('💾 Sin servidor, usando local');
   }
 }
 
 async function saveToServer() {
+  console.log('saveToServer called');
   showToast('💾 Guardando al servidor...');
   try {
     const payload = { state, knockoutTeams: {} };
     for (const m of ALL_MATCHES) {
       if (m.match > 72) payload.knockoutTeams[m.match] = { home: m.home, away: m.away };
     }
-    const resp = await fetch(window.location.origin.replace(/:8081/,':8082') + '/save-predictions', {
+    console.log('payload to send:', payload);
+    const url = 'http://194.34.232.193:8082/save-predictions';
+    console.log('URL:', url);
+    const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
+    console.log('save response:', resp);
     if (resp.ok) showToast('💾 Guardado en servidor ✅');
     else showToast('❌ Error al guardar: ' + resp.status);
   } catch (err) {
-    showToast('❌ Servidor no disponible');
+    console.error('saveToServer error:', err);
+    showToast('❌ Servidor no disponible: ' + err.message);
   }
 }
 
